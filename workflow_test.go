@@ -63,7 +63,7 @@ func TestWorkflowParallel(t *testing.T) {
 func TestWait(t *testing.T) {
 	workflow := NewWorkflow(&Config{MaxRetries: 0, Concurrency: 2}, double, sq, up)
 	workflow.Start()
-	waitCh := make(chan bool)
+	waitCh := make(chan struct{})
 	defer workflow.Close()
 
 	expected := []int{}
@@ -83,7 +83,6 @@ func TestWait(t *testing.T) {
 
 	go func() {
 		workflow.Wait()
-		waitCh <- true
 		close(waitCh)
 	}()
 

@@ -1,9 +1,5 @@
 package workflow
 
-import (
-	"fmt"
-)
-
 // Processor is a type of function to process document extracted from fetcher and produce output
 type Processor func(*Job)
 
@@ -40,11 +36,11 @@ func (w *Workflow) Exec(data interface{}) interface{} {
 }
 
 func (w *Workflow) AddJob(item interface{}) {
-	go queue(NewJob(w.Context, item), w.chans[0])
+	go queue(NewJob(w.Context, w.Config, item), w.chans[0])
 }
 
-func (w *Workflow) ReQueueJob(job *Job) {
-	go queue(job, w.chans[0])
+func (w *Workflow) ReQueueJob(job *Job, idx int) {
+	go queue(job, w.chans[idx])
 }
 
 // Start scraper workers
@@ -77,7 +73,6 @@ func (w *Workflow) Close() {
 }
 
 // func (w *Workflow) Next() {
-
 // }
 
 // Queue a job in any channel queue
@@ -92,7 +87,7 @@ func (w *Workflow) procWorker(proc Processor, idx int, next chan *Job) {
 		if job.Err == nil {
 			go queue(job, next)
 		} else {
-			job.Error(fmt.Sprintf("Processor error %v\n", job.Err))
+			go job.Retry(idx)
 		}
 	}
 }

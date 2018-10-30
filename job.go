@@ -14,10 +14,10 @@ type Job struct {
 	*Config
 }
 
-func NewJob(ctx *Context, data interface{}) *Job {
+func NewJob(ctx *Context, cfg *Config, data interface{}) *Job {
 	ctx.wg.Add(1)
 	ctx.jobCount++
-	return &Job{Context: ctx, Data: data}
+	return &Job{Context: ctx, Config: cfg, Data: data}
 }
 
 func NewSerialJob(data interface{}) *Job {
@@ -25,12 +25,14 @@ func NewSerialJob(data interface{}) *Job {
 }
 
 func (j *Job) Error(err string) {
-	j.retries++
+	j.Err = fmt.Errorf(err)
+}
 
+func (j *Job) Retry(idx int) {
+	j.retries++
 	if j.retries < j.MaxRetries {
-		j.workflow.ReQueueJob(j)
+		j.workflow.ReQueueJob(j, idx)
 	} else {
-		j.Err = fmt.Errorf(err)
 		j.Done()
 	}
 }

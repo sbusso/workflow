@@ -1,41 +1,52 @@
 package workflow
 
-import (
-	"fmt"
-)
+import "fmt"
 
-type Worker struct {
-	*Pipeline
-	*Context
+// Processor is a type of function to process document extracted from fetcher and produce output
+type Processor func(*Job)
+
+type Workflow struct {
+	steps []Processor
 	*Config
+	*Context
 }
 
-func NewWorker(pipeline *Pipeline, cfg *Config) *Worker {
+// SerialWorkflow
+// ParallelWorkflow
+// PersistentWorkflow
 
-	// Config for Processors / Context for Worker Caller
+func NewWorkflow(cfg *Config, fs ...Processor) *Workflow {
 
-	w := &Worker{
-		Pipeline: pipeline,
-		Config:   cfg,
+	w := &Workflow{
+		steps:  fs,
+		Config: cfg,
 	}
 
-	ctx := NewContext(w, len(pipeline.steps))
+	ctx := NewContext(w, len(fs))
 
 	w.Context = ctx
 
 	return w
 }
 
-func (w *Worker) AddJob(item interface{}) {
+func (w *Workflow) Exec(data interface{}) interface{} {
+	j := NewSerialJob(data)
+	for _, s := range w.steps {
+		s(j)
+	}
+	return j.Data
+}
+
+func (w *Workflow) AddJob(item interface{}) {
 	go queue(NewJob(w.Context, item), w.chans[0])
 }
 
-func (w *Worker) ReQueueJob(job *Job) {
+func (w *Workflow) ReQueueJob(job *Job) {
 	go queue(job, w.chans[0])
 }
 
 // Start scraper workers
-func (w *Worker) Start() {
+func (w *Workflow) Start() {
 	l := len(w.steps)
 	for wk := 0; wk < w.Concurrency; wk++ {
 		for i, p := range w.steps {
@@ -53,13 +64,13 @@ func (w *Worker) Start() {
 }
 
 // Close stop all channels and shutdown workers
-func (w *Worker) Close() {
+func (w *Workflow) Close() {
 	for _, c := range w.chans {
 		close(c)
 	}
 }
 
-func (w *Worker) Next() {
+func (w *Workflow) Next() {
 
 }
 
@@ -68,7 +79,7 @@ func queue(job *Job, ch chan *Job) {
 	ch <- job
 }
 
-func (w *Worker) procWorker(proc Processor, idx int, next chan *Job) {
+func (w *Workflow) procWorker(proc Processor, idx int, next chan *Job) {
 	for job := range w.chans[idx] {
 		w.steps[idx](job)
 
@@ -80,7 +91,7 @@ func (w *Worker) procWorker(proc Processor, idx int, next chan *Job) {
 	}
 }
 
-func (w *Worker) resultWorker() {
+func (w *Workflow) resultWorker() {
 	for job := range w.resultChan {
 		w.ReturnChan <- job.Data
 		job.Done()

@@ -19,44 +19,43 @@ func up(j *Job) {
 	j.Data = v + 1
 }
 
-func TestPipeline(t *testing.T) {
-	pipeline := NewPipeline(double, sq, up)
-	if l := len(pipeline.steps); l != 3 {
-		t.Errorf("Pipeline Len was incorrect, got: %d, want: %d.", l, 3)
+func TestWorkflow(t *testing.T) {
+	workflow := NewWorkflow(&Config{}, double, sq, up)
+	if l := len(workflow.steps); l != 3 {
+		t.Errorf("Workflow Len was incorrect, got: %d, want: %d.", l, 3)
 	}
 }
 
-func TestPipelineSerial(t *testing.T) {
-	pipeline := NewPipeline(double, sq, up)
+func TestWorkflowSerial(t *testing.T) {
+	workflow := NewWorkflow(&Config{}, double, sq, up)
 
-	if l := pipeline.Exec(2); l != 17 {
-		t.Errorf("Pipeline Serial was incorrect, got: %d, want: %d.", l, 17)
+	if l := workflow.Exec(2); l != 17 {
+		t.Errorf("Workflow Serial was incorrect, got: %d, want: %d.", l, 17)
 	}
 
 }
 
-func TestPipelineParallel(t *testing.T) {
-	pipeline := NewPipeline(double, sq, up)
-	worker := NewWorker(pipeline, &Config{MaxRetries: 0, Concurrency: 2})
-	worker.Start()
-	defer worker.Close()
+func TestWorkflowParallel(t *testing.T) {
+	workflow := NewWorkflow(&Config{MaxRetries: 0, Concurrency: 2}, double, sq, up)
+	workflow.Start()
+	defer workflow.Close()
 
 	expected := []int{}
 	nb := 25
 
 	for i := 0; i < nb; i++ {
-		worker.AddJob(i)
+		workflow.AddJob(i)
 		expected = append(expected, 4*i*i+1)
 	}
 
 	var results []int
 	for i := 0; i < nb; i++ {
-		l := <-worker.ReturnChan
+		l := <-workflow.ReturnChan
 		results = append(results, l.(int))
 	}
 
 	if !sameSlice(results, expected) {
-		t.Errorf("Pipeline Parallel was incorrect, got: %v, want: %v.", results, expected)
+		t.Errorf("Workflow Parallel was incorrect, got: %v, want: %v.", results, expected)
 	}
 
 }

@@ -28,7 +28,7 @@ func (j *Job) Error(err string) {
 	j.retries++
 
 	if j.retries < j.MaxRetries {
-		j.worker.ReQueueJob(j)
+		j.workflow.ReQueueJob(j)
 	} else {
 		j.Err = fmt.Errorf(err)
 		j.Done()

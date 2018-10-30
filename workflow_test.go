@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"testing"
+	"time"
 )
 
 func double(j *Job) {
@@ -32,7 +33,6 @@ func TestWorkflowSerial(t *testing.T) {
 	if l := workflow.Exec(2); l != 17 {
 		t.Errorf("Workflow Serial was incorrect, got: %d, want: %d.", l, 17)
 	}
-
 }
 
 func TestWorkflowParallel(t *testing.T) {
@@ -58,6 +58,41 @@ func TestWorkflowParallel(t *testing.T) {
 		t.Errorf("Workflow Parallel was incorrect, got: %v, want: %v.", results, expected)
 	}
 
+}
+
+func TestWait(t *testing.T) {
+	workflow := NewWorkflow(&Config{MaxRetries: 0, Concurrency: 2}, double, sq, up)
+	workflow.Start()
+	waitCh := make(chan bool)
+	defer workflow.Close()
+
+	expected := []int{}
+	nb := 20
+
+	for i := 0; i < nb; i++ {
+		workflow.AddJob(i)
+		expected = append(expected, 4*i*i+1)
+	}
+
+	go func() {
+		for i := 0; i < nb; i++ {
+			<-workflow.ReturnChan
+
+		}
+	}()
+
+	go func() {
+		workflow.Wait()
+		waitCh <- true
+		close(waitCh)
+	}()
+
+	select {
+	case <-waitCh:
+
+	case <-time.After(100 * time.Millisecond):
+		t.Error("Workflow Parallel didnt terminated by WaitGroup but with Timeout.")
+	}
 }
 
 func sameSlice(x, y []int) bool {

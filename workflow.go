@@ -1,6 +1,8 @@
 package workflow
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Processor is a type of function to process document extracted from fetcher and produce output
 type Processor func(*Job)
@@ -59,8 +61,11 @@ func (w *Workflow) Start() {
 			go w.procWorker(p, i, next)
 		}
 	}
-
 	go w.resultWorker()
+}
+
+func (w *Workflow) Wait() {
+	w.wg.Wait()
 }
 
 // Close stop all channels and shutdown workers
@@ -68,11 +73,12 @@ func (w *Workflow) Close() {
 	for _, c := range w.chans {
 		close(c)
 	}
+	close(w.resultChan)
 }
 
-func (w *Workflow) Next() {
+// func (w *Workflow) Next() {
 
-}
+// }
 
 // Queue a job in any channel queue
 func queue(job *Job, ch chan *Job) {

@@ -37,7 +37,7 @@ func (w *Worker) ReQueueJob(job *Job) {
 // Start scraper workers
 func (w *Worker) Start() {
 	l := len(w.steps)
-	for wk := 0; wk < w.concurrency; wk++ {
+	for wk := 0; wk < w.Concurrency; wk++ {
 		for i, p := range w.steps {
 			var next chan *Job
 			if i < l-1 {

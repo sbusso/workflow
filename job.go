@@ -27,7 +27,7 @@ func NewSerialJob(data interface{}) *Job {
 func (j *Job) Error(err string) {
 	j.retries++
 
-	if j.retries < j.maxRetries {
+	if j.retries < j.MaxRetries {
 		j.worker.ReQueueJob(j)
 	} else {
 		j.Err = fmt.Errorf(err)

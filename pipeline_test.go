@@ -37,7 +37,7 @@ func TestPipelineSerial(t *testing.T) {
 
 func TestPipelineParallel(t *testing.T) {
 	pipeline := NewPipeline(double, sq, up)
-	worker := NewWorker(pipeline, &Config{maxRetries: 0, concurrency: 2})
+	worker := NewWorker(pipeline, &Config{MaxRetries: 0, Concurrency: 2})
 	worker.Start()
 	defer worker.Close()
 

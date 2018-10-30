@@ -6,8 +6,8 @@ import (
 )
 
 type Config struct {
-	maxRetries  int
-	concurrency int
+	MaxRetries  int
+	Concurrency int
 }
 
 type Context struct {
@@ -23,14 +23,14 @@ type Context struct {
 func NewContext(worker *Worker, nbProcs int) *Context {
 	var chs = make([]chan *Job, nbProcs)
 	for i := range chs {
-		chs[i] = make(chan *Job, runtime.NumCPU()*worker.concurrency)
+		chs[i] = make(chan *Job, runtime.NumCPU()*worker.Concurrency)
 	}
 	return &Context{
 		wg:         new(sync.WaitGroup),
 		worker:     worker,
 		chans:      chs,
-		ReturnChan: make(chan interface{}, runtime.NumCPU()*worker.concurrency),
-		resultChan: make(chan *Job, runtime.NumCPU()*worker.concurrency),
+		ReturnChan: make(chan interface{}, runtime.NumCPU()*worker.Concurrency),
+		resultChan: make(chan *Job, runtime.NumCPU()*worker.Concurrency),
 	}
 }
 

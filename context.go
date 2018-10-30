@@ -1,7 +1,6 @@
 package workflow
 
 import (
-	"log"
 	"runtime"
 	"sync"
 )
@@ -37,6 +36,5 @@ func NewContext(worker *Worker, nbProcs int, returnChan chan interface{}) *Conte
 
 func (ctx *Context) Done() {
 	ctx.doneCount++
-	log.Printf("Jobs done: %d\n", ctx.doneCount)
 	ctx.wg.Done()
 }

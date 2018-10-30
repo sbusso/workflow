@@ -83,5 +83,6 @@ func (w *Worker) procWorker(proc Processor, idx int, next chan *Job) {
 func (w *Worker) resultWorker() {
 	for job := range w.resultChan {
 		w.returnChan <- job.Data
+		job.Done()
 	}
 }

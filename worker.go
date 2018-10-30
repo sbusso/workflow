@@ -10,7 +10,7 @@ type Worker struct {
 	*Config
 }
 
-func NewWorker(pipeline *Pipeline, returnChan chan interface{}, cfg *Config) *Worker {
+func NewWorker(pipeline *Pipeline, cfg *Config) *Worker {
 
 	// Config for Processors / Context for Worker Caller
 
@@ -19,7 +19,7 @@ func NewWorker(pipeline *Pipeline, returnChan chan interface{}, cfg *Config) *Wo
 		Config:   cfg,
 	}
 
-	ctx := NewContext(w, len(pipeline.steps), returnChan)
+	ctx := NewContext(w, len(pipeline.steps))
 
 	w.Context = ctx
 
@@ -82,7 +82,7 @@ func (w *Worker) procWorker(proc Processor, idx int, next chan *Job) {
 
 func (w *Worker) resultWorker() {
 	for job := range w.resultChan {
-		w.returnChan <- job.Data
+		w.ReturnChan <- job.Data
 		job.Done()
 	}
 }

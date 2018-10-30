@@ -16,11 +16,11 @@ type Context struct {
 	doneCount  int
 	worker     *Worker
 	chans      []chan *Job
-	returnChan chan interface{}
+	ReturnChan chan interface{}
 	resultChan chan *Job
 }
 
-func NewContext(worker *Worker, nbProcs int, returnChan chan interface{}) *Context {
+func NewContext(worker *Worker, nbProcs int) *Context {
 	var chs = make([]chan *Job, nbProcs)
 	for i := range chs {
 		chs[i] = make(chan *Job, runtime.NumCPU()*worker.concurrency)
@@ -29,7 +29,7 @@ func NewContext(worker *Worker, nbProcs int, returnChan chan interface{}) *Conte
 		wg:         new(sync.WaitGroup),
 		worker:     worker,
 		chans:      chs,
-		returnChan: returnChan,
+		ReturnChan: make(chan interface{}, runtime.NumCPU()*worker.concurrency),
 		resultChan: make(chan *Job, runtime.NumCPU()*worker.concurrency),
 	}
 }

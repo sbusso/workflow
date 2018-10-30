@@ -7,4 +7,5 @@ Code abstracted and then extracted from a complex application. I havent checked 
 
 ## TODO
 
+- [ ] battle-tested
 - [ ] persistent storage for stateful workflows

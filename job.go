@@ -36,3 +36,8 @@ func (j *Job) Retry(idx int) {
 		j.Done()
 	}
 }
+
+func (j *Job) Done() {
+	j.doneCount++
+	j.wg.Done()
+}

@@ -11,13 +11,12 @@ type Config struct {
 }
 
 type Context struct {
+	ReturnChan chan interface{}
 	wg         *sync.WaitGroup
 	jobCount   int
 	doneCount  int
 	workflow   *Workflow
 	chans      []chan *Job
-	ReturnChan chan interface{}
-	resultChan chan *Job
 }
 
 func NewContext(workflow *Workflow, nbProcs int) *Context {
@@ -26,15 +25,9 @@ func NewContext(workflow *Workflow, nbProcs int) *Context {
 		chs[i] = make(chan *Job, runtime.NumCPU()*workflow.Concurrency)
 	}
 	return &Context{
+		ReturnChan: make(chan interface{}, runtime.NumCPU()*workflow.Concurrency),
 		wg:         new(sync.WaitGroup),
 		workflow:   workflow,
 		chans:      chs,
-		ReturnChan: make(chan interface{}, runtime.NumCPU()*workflow.Concurrency),
-		resultChan: make(chan *Job, runtime.NumCPU()*workflow.Concurrency),
 	}
-}
-
-func (ctx *Context) Done() {
-	ctx.doneCount++
-	ctx.wg.Done()
 }

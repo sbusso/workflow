@@ -9,3 +9,4 @@ Code abstracted and then extracted from a complex application. I havent checked 
 
 - [ ] battle-tested, test errors / job config
 - [ ] persistent storage for stateful workflows
+- [ ] pass only data to processor and find another a way to handle error (by function returning) and spawning (by enclosing processors ?)

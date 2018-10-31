@@ -52,12 +52,11 @@ func (w *Workflow) Start() {
 			if i < l-1 {
 				next = w.chans[i+1]
 			} else {
-				next = w.resultChan
+				next = nil
 			}
 			go w.procWorker(p, i, next)
 		}
 	}
-	go w.resultWorker()
 }
 
 func (w *Workflow) Wait() {
@@ -69,7 +68,6 @@ func (w *Workflow) Close() {
 	for _, c := range w.chans {
 		close(c)
 	}
-	close(w.resultChan)
 }
 
 // func (w *Workflow) Next() {
@@ -85,16 +83,14 @@ func (w *Workflow) procWorker(proc Processor, idx int, next chan *Job) {
 		w.steps[idx](job)
 
 		if job.Err == nil {
-			go queue(job, next)
+			if next != nil {
+				go queue(job, next)
+			} else {
+				go job.Done()
+			}
+
 		} else {
 			go job.Retry(idx)
 		}
-	}
-}
-
-func (w *Workflow) resultWorker() {
-	for job := range w.resultChan {
-		w.ReturnChan <- job.Data
-		job.Done()
 	}
 }

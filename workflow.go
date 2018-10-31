@@ -1,10 +1,16 @@
 package workflow
 
+import (
+	"runtime"
+)
+
 // Processor is a type of function to process document extracted from fetcher and produce output
-type Processor func(*Job)
+type Processor func(interface{}) (interface{}, error)
 
 type Workflow struct {
 	steps []Processor
+	chans []chan *Job
+
 	*Config
 	*Context
 }
@@ -16,27 +22,36 @@ type Workflow struct {
 func NewWorkflow(cfg *Config, fs ...Processor) *Workflow {
 
 	w := &Workflow{
-		steps:  fs,
+		steps:  []Processor{},
+		chans:  []chan *Job{},
 		Config: cfg,
 	}
 
-	ctx := NewContext(w, len(fs))
-
+	ctx := NewContext(w)
+	w.AddProcessors(fs...)
 	w.Context = ctx
 
 	return w
 }
 
-func (w *Workflow) Exec(data interface{}) interface{} {
-	j := NewSerialJob(data)
-	for _, s := range w.steps {
-		s(j)
+func (w *Workflow) AddProcessors(fs ...Processor) {
+	var chs = make([]chan *Job, len(fs))
+	for i := range chs {
+		chs[i] = make(chan *Job, runtime.NumCPU()*w.Concurrency)
 	}
-	return j.Data
+	w.steps = append(w.steps, fs...)
+	w.chans = append(w.chans, chs...)
 }
 
-func (w *Workflow) AddJob(item interface{}) {
-	go queue(NewJob(w.Context, w.Config, item), w.chans[0])
+func (w *Workflow) Exec(data interface{}) interface{} {
+	for _, proc := range w.steps {
+		data, _ = proc(data)
+	}
+	return data
+}
+
+func (w *Workflow) AddJob(data interface{}) {
+	go queue(NewJob(w.Context, w.Config, data), w.chans[0])
 }
 
 func (w *Workflow) ReQueueJob(job *Job, idx int) {
@@ -80,9 +95,10 @@ func queue(job *Job, ch chan *Job) {
 
 func (w *Workflow) procWorker(proc Processor, idx int, next chan *Job) {
 	for job := range w.chans[idx] {
-		w.steps[idx](job)
+		var err error
+		job.Data, err = w.steps[idx](job.Data)
 
-		if job.Err == nil {
+		if err == nil {
 			if next != nil {
 				go queue(job, next)
 			} else {
@@ -90,7 +106,7 @@ func (w *Workflow) procWorker(proc Processor, idx int, next chan *Job) {
 			}
 
 		} else {
-			go job.Retry(idx)
+			go job.Retry(err, idx)
 		}
 	}
 }

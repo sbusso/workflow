@@ -5,19 +5,27 @@ import (
 	"time"
 )
 
-func double(j *Job) {
-	v := j.Data.(int)
-	j.Data = v * 2
+func double(data interface{}) (interface{}, error) {
+	d := data.(int)
+	return d * 2, nil
 }
 
-func sq(j *Job) {
-	v := j.Data.(int)
-	j.Data = v * v
+func sq(data interface{}) (interface{}, error) {
+	d := data.(int)
+	return d * d, nil
 }
 
-func up(j *Job) {
-	v := j.Data.(int)
-	j.Data = v + 1
+func up(data interface{}) (interface{}, error) {
+	d := data.(int)
+	return d + 1, nil
+}
+
+func buildExpectation(n int) []int {
+	expected := []int{}
+	for i := 0; i < n; i++ {
+		expected = append(expected, 4*i*i+1)
+	}
+	return expected
 }
 func TestWorkflow(t *testing.T) {
 	workflow := NewWorkflow(&Config{}, double, sq, up)
@@ -28,29 +36,29 @@ func TestWorkflow(t *testing.T) {
 
 func TestWorkflowSerial(t *testing.T) {
 	workflow := NewWorkflow(&Config{}, double, sq, up)
-
-	if l := workflow.Exec(2); l != 17 {
-		t.Errorf("Workflow Serial was incorrect, got: %d, want: %d.", l, 17)
+	expected := 17
+	if got := workflow.Exec(2).(int); got != expected {
+		t.Errorf("Workflow Serial was incorrect, got: %d, want: %d.", got, expected)
 	}
 }
 
 func TestWorkflowParallel(t *testing.T) {
 	nb := 25
-	ReturnChan := make(chan interface{}, nb)
-	workflow := NewWorkflow(&Config{MaxRetries: 0, Concurrency: 2}, double, sq, up, ChanResultHelper(ReturnChan))
+
+	workflow := NewWorkflow(&Config{MaxRetries: 0, Concurrency: 2}, double, sq, up)
+	returnChan := workflow.HelperAddChanResult(nb)
 	workflow.Start()
 	defer workflow.Close()
 
-	expected := []int{}
+	expected := buildExpectation(nb)
 
 	for i := 0; i < nb; i++ {
 		workflow.AddJob(i)
-		expected = append(expected, 4*i*i+1)
 	}
 
 	var results []int
 	for i := 0; i < nb; i++ {
-		l := <-ReturnChan
+		l := <-returnChan
 		results = append(results, l.(int))
 	}
 
@@ -62,8 +70,8 @@ func TestWorkflowParallel(t *testing.T) {
 
 func TestWait(t *testing.T) {
 	nb := 20
-	ReturnChan := make(chan interface{}, nb)
-	workflow := NewWorkflow(&Config{MaxRetries: 0, Concurrency: 2}, double, sq, up, ChanResultHelper(ReturnChan))
+	workflow := NewWorkflow(&Config{MaxRetries: 0, Concurrency: 2}, double, sq, up)
+	returnChan := workflow.HelperAddChanResult(nb)
 	workflow.Start()
 	waitCh := make(chan struct{})
 	defer workflow.Close()
@@ -76,9 +84,8 @@ func TestWait(t *testing.T) {
 	}
 
 	go func() {
-		for i := 0; i < nb; i++ {
-			<-ReturnChan
-
+		for {
+			<-returnChan
 		}
 	}()
 
@@ -92,6 +99,67 @@ func TestWait(t *testing.T) {
 
 	case <-time.After(100 * time.Millisecond):
 		t.Error("Workflow Parallel didnt terminated by WaitGroup but with Timeout.")
+	}
+}
+
+func step1(w *Workflow) Processor {
+	return func(data interface{}) (interface{}, error) {
+		v := data.(int)
+
+		if v < 5 {
+			w.AddJob(v + 1)
+		}
+
+		return v + 1, nil
+	}
+}
+
+func step2(data interface{}) (interface{}, error) {
+	d := data.(int)
+	return d * d, nil
+}
+
+func TestSpawning(t *testing.T) {
+	workflow := NewWorkflow(&Config{MaxRetries: 0, Concurrency: 2})
+	workflow.AddProcessors(step1(workflow), step2)
+	returnChan := workflow.HelperAddChanResult(5)
+	workflow.Start()
+	waitCh := make(chan struct{})
+	defer func() {
+		workflow.Close()
+		close(returnChan)
+	}()
+
+	expected := []int{4, 9, 16, 25, 36}
+	got := []int{}
+
+	workflow.AddJob(1)
+
+	go func() {
+		// for mdg := range returnChan
+		for {
+			msg, open := <-returnChan
+			if !open {
+				break
+			}
+			got = append(got, msg.(int))
+		}
+	}()
+
+	go func() {
+		workflow.Wait()
+		close(waitCh)
+	}()
+
+	select {
+	case <-waitCh:
+
+	case <-time.After(100 * time.Millisecond):
+		t.Error("Workflow Parallel didnt terminated by WaitGroup but with Timeout.")
+	}
+	<-time.After(100 * time.Millisecond)
+	if !sameSlice(got, expected) {
+		t.Errorf("TestSpawning was incorrect, got: %v, want: %v.", got, expected)
 	}
 }
 

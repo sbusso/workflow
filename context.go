@@ -1,7 +1,6 @@
 package workflow
 
 import (
-	"runtime"
 	"sync"
 )
 
@@ -11,23 +10,15 @@ type Config struct {
 }
 
 type Context struct {
-	ReturnChan chan interface{}
-	wg         *sync.WaitGroup
-	jobCount   int
-	doneCount  int
-	workflow   *Workflow
-	chans      []chan *Job
+	wg        *sync.WaitGroup
+	jobCount  int
+	doneCount int
+	workflow  *Workflow
 }
 
-func NewContext(workflow *Workflow, nbProcs int) *Context {
-	var chs = make([]chan *Job, nbProcs)
-	for i := range chs {
-		chs[i] = make(chan *Job, runtime.NumCPU()*workflow.Concurrency)
-	}
+func NewContext(workflow *Workflow) *Context {
 	return &Context{
-		ReturnChan: make(chan interface{}, runtime.NumCPU()*workflow.Concurrency),
-		wg:         new(sync.WaitGroup),
-		workflow:   workflow,
-		chans:      chs,
+		wg:       new(sync.WaitGroup),
+		workflow: workflow,
 	}
 }

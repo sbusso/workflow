@@ -1,9 +1,5 @@
 package workflow
 
-import (
-	"fmt"
-)
-
 // Job is the entity to handle worker activity and data
 type Job struct {
 	retries int
@@ -24,11 +20,8 @@ func NewSerialJob(data interface{}) *Job {
 	return &Job{Data: data}
 }
 
-func (j *Job) Error(err string) {
-	j.Err = fmt.Errorf(err)
-}
-
-func (j *Job) Retry(idx int) {
+func (j *Job) Retry(err error, idx int) {
+	j.Err = err
 	j.retries++
 	if j.retries < j.MaxRetries {
 		j.workflow.ReQueueJob(j, idx)

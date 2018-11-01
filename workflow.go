@@ -96,9 +96,10 @@ func queue(job *Job, ch chan *Job) {
 func (w *Workflow) procWorker(proc Processor, idx int, next chan *Job) {
 	for job := range w.chans[idx] {
 		var err error
-		job.Data, err = w.steps[idx](job.Data)
+		d, err := w.steps[idx](job.Data)
 
 		if err == nil {
+			job.Data = d
 			if next != nil {
 				go queue(job, next)
 			} else {

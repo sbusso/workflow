@@ -11,8 +11,8 @@ type Config struct {
 
 type Context struct {
 	wg        *sync.WaitGroup
-	jobCount  int
-	doneCount int
+	jobCount  int32
+	doneCount int32
 	workflow  *Workflow
 }
 

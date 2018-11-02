@@ -1,5 +1,7 @@
 package workflow
 
+import "sync/atomic"
+
 // Job is the entity to handle worker activity and data
 type Job struct {
 	retries int
@@ -12,7 +14,7 @@ type Job struct {
 
 func NewJob(ctx *Context, cfg *Config, data interface{}) *Job {
 	ctx.wg.Add(1)
-	ctx.jobCount++
+	atomic.AddInt32(&ctx.jobCount, 1)
 	return &Job{Context: ctx, Config: cfg, Data: data}
 }
 
@@ -31,6 +33,6 @@ func (j *Job) Retry(err error, idx int) {
 }
 
 func (j *Job) Done() {
-	j.doneCount++
+	atomic.AddInt32(&j.doneCount, 1)
 	j.wg.Done()
 }
